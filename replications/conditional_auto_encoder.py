@@ -2,11 +2,11 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from data.utils import GKXDatasetFactory
-from models import ConditionalAutoEncoder
+from ..utils.data import GKXDatasetFactory
+from ..utils.models import ConditionalAutoEncoder
 
 # setup
-ROOT_DIR = "./data"
+ROOT_DIR = "../data"
 
 ds_factory = GKXDatasetFactory(root_dir=ROOT_DIR)
 ds_factory.prepare_data()
