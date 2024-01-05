@@ -2,15 +2,20 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from ..utils.data import GKXDatasetFactory
-from ..utils.models import ConditionalAutoEncoder
+from gkx_nn.data import GKXDatasetFactory, normalize, minmax
+from gkx_nn.models import ConditionalAutoEncoder
 
 # setup
-ROOT_DIR = "../data"
+ROOT_DIR = "./data"
 
 ds_factory = GKXDatasetFactory(root_dir=ROOT_DIR)
-ds_factory.prepare_data()
-tvtsets = ds_factory.create_tvt_datasets(from_year=2010)
+ds_factory.download_data()
+tvtsets = ds_factory.split_by_year(
+    split_ratio=[.3, .2, .5],
+    from_year="2018",
+    # to_year="1961",
+    scaling_func=normalize,
+)
 trainloader, validloader, testloader = (DataLoader(ds, batch_size=32, shuffle=True) for ds in tvtsets)
 model = ConditionalAutoEncoder().double()
 # import pdb; pdb.set_trace()
