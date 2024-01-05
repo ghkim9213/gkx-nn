@@ -15,12 +15,11 @@ import pandas as pd
 
 GKX_DOWNLOAD_URL = "https://dachxiu.chicagobooth.edu/download/datashare.zip"
 GKX_CSV_FILENAME = "datashare.csv"
-
-
 GKX_INDEX_COLS = ["permno", "DATE", "sic2"]
 GKX_STOCK_RETURN_COL = "r"
 GKX_DEFAULT_SOURCE_NAME = "datashare.csv"
 GKX_DEFAULT_CHUNKED_DIR = "chunked_by_year"
+
 class GKXDatasetFactory:
     def __init__(self, root_dir: str):
         assert os.path.exists(root_dir)
