@@ -8,7 +8,7 @@ import warnings
 import zipfile
 
 from tqdm import tqdm
-from torch.utils.data import Dataset, ConcatDataset
+from torch.utils.data import Dataset
 import torch
 import requests
 import pandas as pd
@@ -196,8 +196,8 @@ class GKXDataset(Dataset):
         return len(self._df)
     
     def __getitem__(self, idx):
-        item = self._df.loc[idx]
-        return torch.tensor(item[self.char_cols].values), item[self.stock_return_col]
+        item = self._df.loc[idx].astype("float32")
+        return torch.tensor(item[self.char_cols].values), item[self.stock_return_col].astype("float32")
 
 
 class GKXDatasetWithPortfolioReturns(GKXDataset):
@@ -221,7 +221,7 @@ class GKXDatasetWithPortfolioReturns(GKXDataset):
     
     def __getitem__(self, idx):
         item = self._df.loc[idx]
-        chars = torch.tensor(item[self.char_cols].values)
-        factors = torch.tensor(self.portfolio_returns.loc[item["DATE"]].values)
-        stock_return = item[self.stock_return_col]
+        chars = torch.tensor(item[self.char_cols].astype("float32").values)
+        factors = torch.tensor(self.portfolio_returns.loc[item["DATE"]].astype("float32").values)
+        stock_return = item[self.stock_return_col].astype("float32")
         return chars, factors, stock_return

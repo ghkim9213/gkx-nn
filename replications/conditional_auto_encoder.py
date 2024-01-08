@@ -2,6 +2,7 @@ from tqdm import tqdm
 
 import optuna
 import mlflow
+from mlflow.models import infer_signature
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
@@ -16,28 +17,26 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # data
 ROOT_DIR = "./data"
-BATCH_SIZE = 10000
+BATCH_SIZE = 2**11
 ds_factory = GKXDatasetFactory(root_dir=ROOT_DIR)
 ds_factory.download_data()
-tvtsets = ds_factory.split_by_year(
-    split_ratio=[.3, .2, .5],
+datasets = ds_factory.split_by_year(
+    split_ratio=[.6, .4],
     from_year="2011",
-    to_year="2020",
+    to_year="2015",
     scaling_func=normalize,
 )
-trainloader, validloader, testloader = (DataLoader(ds, batch_size=BATCH_SIZE, shuffle=True) for ds in tvtsets)
+trainloader, validloader = (DataLoader(ds, batch_size=BATCH_SIZE, shuffle=True) for ds in datasets)
 input_extractor = lambda loaded: loaded[:2]
 label_extractor = lambda loaded: loaded[2]
 
 # model
-model = ConditionalAutoEncoder(
-    batchnorm=True # Algorithm 7, GKX2020
-).double()
+model = ConditionalAutoEncoder(batchnorm=True) # batchnorm, Algorithm 7, GKX2020
 
 # trainer
 # constant configs
 SEED = 0
-MAX_EPOCH = 10
+MAX_EPOCH = 100
 PATIENCE = 5
 
 # hp space
@@ -53,6 +52,7 @@ def objective(trial):
     lr, l1 = suggest_hp(trial)
     print(f"[Trial {trial.number}] lr: {lr:>7f}, l1: {l1:>7f}")
     with mlflow.start_run():
+        mlflow.log_params({"lr": lr, "l1": l1})
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
         loss_fn = LassoLoss(model.named_parameters(), l1=l1)
         for epoch in range(MAX_EPOCH):
@@ -80,7 +80,9 @@ def objective(trial):
             if patience == PATIENCE:
                 print(f"[Trial {trial.number} / epoch {epoch}] early stopped")
                 break
+        x0, x1, y = next(iter(validloader))
+        mlflow.pytorch.log_model(model, f"model_trial_{trial.number}")
     return best_valid_loss
 
 study = optuna.create_study(study_name="init_train", direction="minimize")
-study.optimize(objective, n_trials=5)
+study.optimize(objective, n_trials=10)
