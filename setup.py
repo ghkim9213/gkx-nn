@@ -9,5 +9,7 @@ setup(
         "pandas",
         "requests",
         "tqdm",
+        "optuna",
+        "mlflow",
     ]
 )

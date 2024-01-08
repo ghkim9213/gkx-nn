@@ -82,7 +82,7 @@ class GKXDatasetFactory:
         writer = csv.writer(buffer)
         header = next(reader)        
 
-        print(f"seeking min year of {self.root_file}...")
+        print(f"seeking min target year {min_year} from {self.root_file}...")
         with Spinner():
             curr_year = "1900"
             while curr_year < min_year:
@@ -90,7 +90,8 @@ class GKXDatasetFactory:
                 curr_year = row[1][:4]
 
         writer.writerows([header, row])
-        dfs = []
+        datasets = []
+        dataset_cls = GKXDatasetWithPortfolioReturns if with_portfolio_returns else GKXDataset
         end_of_file = False
         for years in splitted_years:
             print(f"loading data of {years}...")
@@ -123,20 +124,22 @@ class GKXDatasetFactory:
                     writer.writerow(row)
                     overlapped_writer.writerow(row)
                 buffer.seek(0)
-                dfs.append(pd.read_csv(buffer, low_memory=False))
+                dataset = dataset_cls(pd.read_csv(buffer, low_memory=False), **kwargs)
+                datasets.append(dataset)
                 buffer.seek(0)
                 buffer.truncate(0)
                 buffer.write(overlapped_buffer.getvalue())
                 overlapped_buffer.close()
         if end_of_file:
             buffer.seek(0)
-            dfs.append(pd.read_csv(buffer, low_memory=False))
+            dataset = dataset_cls(pd.read_csv(buffer, low_memory=False), **kwargs)
+            datasets.append(dataset)
         csv_handle.close()
         buffer.close()
-        print("dataframes were successfully loaded!")
+        print("datasets were successfully loaded!")
+        return tuple(datasets)
 
-        cls = GKXDatasetWithPortfolioReturns if with_portfolio_returns else GKXDataset
-        return tuple(cls(df=df, **kwargs) for df in dfs)
+        # return tuple(cls(df=df, **kwargs) for df in dfs)
 
 
 class GKXDataset(Dataset):
@@ -149,9 +152,9 @@ class GKXDataset(Dataset):
         self._df = df
         self.scaling_func = scaling_func
 
+        self._set_stock_returns()
         self._fillna_characteristics()
         self._scale_characteristics()
-        self._set_stock_returns()
         
     @property
     def index_cols(self) -> List[str]:
