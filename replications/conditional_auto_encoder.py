@@ -2,7 +2,6 @@ from tqdm import tqdm
 
 import optuna
 import mlflow
-from mlflow.models import infer_signature
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
@@ -17,7 +16,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # data
 ROOT_DIR = "./data"
-BATCH_SIZE = 2**11
+BATCH_SIZE = 2**11 # bsz = 10000 for 30 years, GKX 2020 / hueristically proportinate it
 ds_factory = GKXDatasetFactory(root_dir=ROOT_DIR)
 ds_factory.download_data()
 datasets = ds_factory.split_by_year(
@@ -80,7 +79,6 @@ def objective(trial):
             if patience == PATIENCE:
                 print(f"[Trial {trial.number} / epoch {epoch}] early stopped")
                 break
-        x0, x1, y = next(iter(validloader))
         mlflow.pytorch.log_model(model, f"model_trial_{trial.number}")
     return best_valid_loss
 
