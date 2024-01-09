@@ -67,34 +67,6 @@ class ConditionalAutoEncoder(nn.Module):
         self,
         num_blocks=3,
         num_latents=6,
-        batchnorm=True
-    ):
-        super().__init__()
-        self.num_blocks = num_blocks
-        self.num_latents = num_latents
-        self.batchnorm = batchnorm
-
-        self.beta_encoder = BetaEncoder(
-            num_blocks=num_blocks,
-            num_latents=num_latents,
-            batchnorm=batchnorm,
-        )
-        self.factor_encoder = FactorEncoder(
-            num_latents=num_latents,
-        )
-    
-    def forward(self, characteristics, portfolio_returns):
-        betas = self.beta_encoder(characteristics)
-        factors = self.factor_encoder(portfolio_returns)
-        pred = torch.sum(betas*factors, dim=1)
-        return pred
-
-
-class ConditionalAutoEncoderEnsemble(nn.Module):
-    def __init__(
-        self,
-        num_blocks=3,
-        num_latents=6,
         batchnorm=True,
         num_ensembles=10,
     ):
