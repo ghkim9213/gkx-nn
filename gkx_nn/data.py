@@ -21,6 +21,7 @@ GKX_INDEX_COLS = ["permno", "DATE", "sic2"]
 GKX_YEAR_RANGE = [str(y) for y in list(range(1957, 2022, 1))]
 
 GKX_DEFAULT_STOCK_RETURN_COL = "r"
+GKX_DEFAULT_FUTURE_STOCK_RETURN_COL = "r1m"
 
 normalize = lambda x: (x-x.mean()) / x.std()
 minmax = lambda x: (x-x.min()) / (x.max() - x.min())
@@ -37,6 +38,17 @@ class GKXDatasetFactory:
     @property
     def available_years(self):
         return GKX_YEAR_RANGE
+    
+    def _get_header(self):
+        with open(self.root_file, "r") as f:
+            reader = csv.reader(f)
+            header = next(reader)
+        return header
+    
+    @property
+    def char_cols(self):
+        header = self._get_header()
+        return [c for c in header if c not in GKX_INDEX_COLS]
 
     def download_data(self):
         if os.path.exists(self.root_file):
@@ -53,7 +65,7 @@ class GKXDatasetFactory:
             with_portfolio_returns: bool=True,
             **kwargs
         ):
-        assert len(split_ratio) > 1
+        # assert len(split_ratio) > 1
         assert sum(split_ratio) == 1.
         if from_year is None:
             from_year = self.available_years[0]
@@ -139,14 +151,11 @@ class GKXDatasetFactory:
         print("datasets were successfully loaded!")
         return tuple(datasets)
 
-        # return tuple(cls(df=df, **kwargs) for df in dfs)
-
-
 class GKXDataset(Dataset):
     def __init__(
             self,
             df: pd.DataFrame,
-            scaling_func: Optional[Callable]=None,
+            scaling_func: Callable,
         ):
         super().__init__()
         self._df = df

@@ -4,6 +4,8 @@ from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
 
+from .metrics import oos_rsq
+
 default_input_extractor = lambda loaded: loaded[0]
 default_label_extractor = lambda loaded: loaded[1]
 
@@ -64,3 +66,29 @@ def validate_epoch(
             valid_loss += loss_fn(pred, y).item()
     valid_loss /= batch_count
     return valid_loss
+
+
+def test_epoch(
+        model: torch.nn.Module,
+        device: torch.device,
+        dataloader: DataLoader,
+        metric: Optional[Callable] = None,
+        input_extractor: Optional[Callable] = None,
+        label_extractor: Optional[Callable] = None,
+    ):
+    metric = metric if metric else oos_rsq
+    model = model.to(device)
+    model.eval()
+    if input_extractor is None:
+        input_extractor = default_input_extractor
+    if label_extractor  is None:
+        label_extractor = default_label_extractor
+    accuracy = 0.
+    with torch.no_grad():
+        for batch_count, loaded in tqdm(enumerate(dataloader), total=len(dataloader)):
+            x = tuple(inp.to(device) for inp in _format_input(input_extractor(loaded)))
+            y = label_extractor(loaded).to(device)
+            pred = model(*x)
+            accuracy += metric(pred, y).item()
+    accuracy /= batch_count
+    return accuracy

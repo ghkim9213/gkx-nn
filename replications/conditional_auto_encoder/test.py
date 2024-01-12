@@ -1,17 +1,42 @@
+import os
 import mlflow
+import torch
 from mlflow import MlflowClient
+from torch.utils.data import DataLoader
 
+from gkx_nn.data import GKXDatasetFactory, normalize
+from gkx_nn.models import ConditionalAutoEncoder
+from gkx_nn.experiment import test_epoch
+
+# device
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# data
+ROOT_DIR = "../data"
+BATCH_SIZE = 2**11
+ds_factory = GKXDatasetFactory(root_dir=ROOT_DIR)
+testset = ds_factory.split_by_year(
+    split_ratio=[1.],
+    from_year="2011",
+    to_year="2020",
+    scaling_func=normalize,
+)[0]
+testloader = DataLoader(testset, batch_size=BATCH_SIZE, shuffle=True)
+input_extractor = lambda loaded: loaded[:2]
+label_extractor = lambda loaded: loaded[2]
+
+# model
 client = MlflowClient()
-runs = client.search_runs("0")
-run_valid_losses = [run.data.metrics["valid_loss"] for run in runs]
-minv = min(run_valid_losses)
-run_loc = run_valid_losses.index(minv)
-run = runs[run_loc]
+run = client.search_runs("0")[0]
+model_uri = os.path.join(run.info.artifact_uri, "model")
+model = mlflow.pytorch.load_model(model_uri)
 
-metric_history = client.get_metric_history(run.info.run_id, key="valid_loss")
-step_valid_losses = [metric.value for metric in metric_history]
-minv = min(step_valid_losses)
-step_loc = step_valid_losses.index(minv)
-step = metric_history[step_loc].step
-# client.list_artifacts(run.info.run_id)
-# import pdb; pdb.set_trace()
+# test
+accuracy = test_epoch(
+    model=model,
+    device=device,
+    dataloader=testloader,
+    input_extractor=input_extractor,
+    label_extractor=label_extractor,
+)
+import pdb; pdb.set_trace()
